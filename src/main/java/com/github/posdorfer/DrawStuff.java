@@ -45,13 +45,12 @@ public class DrawStuff {
     private JTextField sleepfield;
 
     public static void main(String[] args) {
-        
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e) {
             e.printStackTrace();
         }
-        
+
         new DrawStuff();
     }
 
@@ -78,7 +77,7 @@ public class DrawStuff {
         progress.setString("0/100");
 
         shuffle = new JCheckBox("Shuffle?", false);
-        
+
         drawBox = new JCheckBox("Draw Box?", true);
 
         JPanel panel = new JPanel(new BorderLayout());
@@ -114,7 +113,7 @@ public class DrawStuff {
 
     public void selectImageButton() {
 
-        JFileChooser fileChooser = new JFileChooser("/Users/wolf/Desktop/");
+        JFileChooser fileChooser = new JFileChooser(System.getProperty("user.home"));
 
         fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
@@ -129,38 +128,36 @@ public class DrawStuff {
                     this.allLines = makeList();
 
                     progress.setString(String.format("%d (%s)", allLines.size(), getDuration()));
-                    //progress.setString("" + allLines.size() + "(~" + minutes + "min)");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
             }
         }
 
     }
 
-    
     private String getDuration() {
-      return getDuration(allLines.size());
+        return getDuration(allLines.size());
     }
-    
+
     private String getDuration(int size) {
-        long duration = (size * (5 + 3 * Integer.parseInt(sleepfield.getText()))) / 1000;
-        return getDuration(duration);
+        long duration = 3 * (size * (5 + 3 * Integer.parseInt(sleepfield.getText()))) / 1000;
+        return formatDurationSeconds(duration);
     }
-    
-    private String getDuration(long seconds) {
-        if(seconds <= 60) {
-            return "~" + seconds+" sec";
-        }
-        else {
+
+    private String formatDurationSeconds(long seconds) {
+        if (seconds <= 60) {
+            return "~" + seconds + " sec";
+        } else {
             double minutes = seconds / 60.0;
             return String.format("~%.2f min", minutes);
         }
     }
-    
+
     private void startDrawButton() throws InterruptedException, AWTException {
-        Thread.sleep(3000);
+        JOptionPane.showMessageDialog(frame, "Press Enter-Key To Start!");
+
+        System.out.println("Starting with box?");
 
         Point start = MouseInfo.getPointerInfo().getLocation();
 
@@ -171,6 +168,7 @@ public class DrawStuff {
 
         Robot r = new Robot();
 
+        performClickInWindowIfMac(startX, startY, r);
         drawMyBox(startX, startY, r);
 
         int showConfirmDialog = JOptionPane.showConfirmDialog(frame, "CONTINUE?\nTakes " + getDuration());
@@ -186,18 +184,10 @@ public class DrawStuff {
         if (shuffle.isSelected()) {
             Collections.shuffle(lines);
         }
-        
-        
+
         new Thread(() -> {
-            
-            if(isMac())  {
-                r.mouseMove(startX, startY);
-                sleep(10);
-                r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-                sleep(5);
-                r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-            }
-            
+
+            performClickInWindowIfMac(startX, startY, r);
 
             for (int i = 0; i < lines.size(); i++) {
                 Line line = lines.get(i);
@@ -218,7 +208,7 @@ public class DrawStuff {
                 final int progressValue = i;
                 SwingUtilities.invokeLater(() -> {
                     progress.setValue(progressValue);
-                    progress.setString(String.format("%d/%d (%s)", progressValue, allLines.size(), getDuration(allLines.size()-progressValue)));
+                    progress.setString(String.format("%d/%d (%s)", progressValue, allLines.size(), getDuration(allLines.size() - progressValue)));
                 });
 
             }
@@ -229,6 +219,16 @@ public class DrawStuff {
         }).start();
 
         System.out.println("Done");
+    }
+
+    private void performClickInWindowIfMac(final int startX, final int startY, Robot r) {
+        if (isMac()) {
+            r.mouseMove(startX, startY);
+            sleep(5);
+            r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            sleep(5);
+            r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        }
     }
 
     private void sleep(int ms) {
@@ -264,7 +264,6 @@ public class DrawStuff {
             }
 
         }
-        
 
         return lines;
     }
@@ -328,7 +327,7 @@ public class DrawStuff {
         Thread.sleep(sleep);
 
         r.mouseMove(x, y);
-        
+
         if (drawBox.isSelected()) {
             Thread.sleep(sleep);
             r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
@@ -336,11 +335,9 @@ public class DrawStuff {
 
         System.out.println("BOX DONE");
     }
-    
-    
-    private boolean isMac() {
-        
-        return true;
+
+    public static boolean isMac() {
+        return System.getProperty("os.name").toLowerCase().startsWith("mac os x");
     }
 
 }
