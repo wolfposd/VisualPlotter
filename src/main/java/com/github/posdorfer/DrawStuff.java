@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
@@ -30,6 +31,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+import static com.github.posdorfer.MouseHelp.sleep;
 
 public class DrawStuff {
 
@@ -38,11 +40,15 @@ public class DrawStuff {
 
     private BufferedImage image;
 
-    private List<Line> allLines;
     private JCheckBox shuffle;
     private JCheckBox drawBox;
     private JProgressBar progress;
     private JTextField sleepfield;
+
+    private List<List<Line>> allLines;
+    private int allLinesToDraw = 0;
+
+    private ConferenceRoom currentConference = new BigBlueButton();
 
     public static void main(String[] args) {
         try {
@@ -122,12 +128,23 @@ public class DrawStuff {
             if (selectedFile != null) {
                 try {
                     BufferedImage image = ImageIO.read(selectedFile);
-                    imagePreview.setIcon(new ImageIcon(image));
-                    this.image = image;
+                    // imagePreview.setIcon(new ImageIcon(image));
 
-                    this.allLines = makeList();
+                    ColorConversion colCon = new ColorConversion(image, currentConference.getColors());
+                    colCon.convertImage();
 
-                    progress.setString(String.format("%d (%s)", allLines.size(), getDuration()));
+                    this.image = colCon.image;
+                    imagePreview.setIcon(new ImageIcon(this.image));
+
+                    allLines = PrepareImage.makeLines(this.image, currentConference.getColors());
+
+                    allLinesToDraw = 0;
+                    allLines.forEach(s -> {
+                        allLinesToDraw += s.size();
+                    });
+                    allLinesToDraw -= allLines.get(1).size();
+
+                    progress.setString(String.format("%d (%s)", allLinesToDraw, getDuration()));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -137,7 +154,7 @@ public class DrawStuff {
     }
 
     private String getDuration() {
-        return getDuration(allLines.size());
+        return getDuration(allLinesToDraw);
     }
 
     private String getDuration(int size) {
@@ -160,6 +177,8 @@ public class DrawStuff {
     }
 
     private void startDrawButton() throws InterruptedException, AWTException {
+        currentConference.performRequiredStartup();
+        
         JOptionPane.showMessageDialog(frame, "Press Enter-Key To Start!");
 
         Point start = MouseInfo.getPointerInfo().getLocation();
@@ -172,7 +191,14 @@ public class DrawStuff {
         Robot r = new Robot();
 
         System.out.println("Starting with Box!");
-        performClickInWindowIfMac(startX, startY, r);
+        if (drawBox.isSelected()) {
+            MouseHelp.performClickInWindowIfMac(startX, startY, r);
+            currentConference.performColorSelection(0, r);
+        }
+        else {
+            MouseHelp.performClickInWindowIfMac(startX, startY, r);
+        }
+        
         drawMyBox(startX, startY, r);
 
         int showConfirmDialog = JOptionPane.showConfirmDialog(frame, "CONTINUE?\nTakes " + getDuration());
@@ -181,74 +207,73 @@ public class DrawStuff {
         }
 
         progress.setValue(0);
-        progress.setMaximum(allLines.size());
-        progress.setString("0/" + allLines.size());
+        progress.setMaximum(allLinesToDraw);
+        progress.setString("0/" + allLinesToDraw);
 
-        List<Line> lines = new ArrayList<>(this.allLines);
-        if (shuffle.isSelected()) {
-            Collections.shuffle(lines);
-        }
+        
 
         new Thread(() -> {
 
-            performClickInWindowIfMac(startX, startY, r);
+            MouseHelp.performClickInWindowIfMac(startX, startY, r);
 
-            for (int i = 0; i < lines.size(); i++) {
-                Line line = lines.get(i);
-                r.mouseMove(startX + line.start.x, startY + line.start.y);
+            Color[] colors = currentConference.getColors();
 
-                r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            int progress = 0;
+            for (int i = 0; i < allLines.size(); i++) {
 
-                sleep(sleepTime);
+                List<Line> curLines = allLines.get(i);
+                
+                if (Objects.equals(colors[i], Color.WHITE) || curLines.size() == 0) {
+                    continue;
+                }
+                
+                if (shuffle.isSelected()) {
+                    curLines = new ArrayList<>(curLines);
+                    Collections.shuffle(curLines);
+                }
 
-                r.mouseMove(startX + line.end.x, startY + line.end.y);
+                sleep(2000);
+                currentConference.performColorSelection(i, r);
+                sleep(1000);
 
-                sleep(sleepTime);
+                for (int lineCount = 0; lineCount < curLines.size(); lineCount++) {
+                    Line line = curLines.get(lineCount);
+                    r.mouseMove(startX + line.start.x, startY + line.start.y);
 
-                r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+                    r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+                    sleep(sleepTime);
+                    r.mouseMove(startX + line.end.x, startY + line.end.y);
+                    sleep(sleepTime);
+                    r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+                    sleep(sleepTime + 5);
 
-                sleep(sleepTime + 5);
+                    progress++;
 
-                final int progressValue = i;
-                SwingUtilities.invokeLater(() -> {
-                    progress.setValue(progressValue);
-                    progress.setString(String.format("%d/%d (%s)", progressValue, allLines.size(), getDuration(allLines.size() - progressValue)));
-                });
+                    final int finalProgress = progress;
+                    SwingUtilities.invokeLater(() -> {
+                        this.progress.setValue(finalProgress);
+                        this.progress.setString(String.format("%d/%d (%s)", finalProgress, allLinesToDraw, getDuration(allLinesToDraw - finalProgress)));
+                    });
+
+                }
 
             }
+            // final update
             SwingUtilities.invokeLater(() -> {
-                progress.setString(String.format("%d/%d (%s)", allLines.size(), allLines.size(), "0 sec"));
-                progress.setValue(allLines.size());
+                this.progress.setString(String.format("%d/%d (%s)", allLinesToDraw, allLinesToDraw, "0 sec"));
+                this.progress.setValue(allLinesToDraw);
             });
+
         }).start();
 
         System.out.println("Done");
     }
 
-    private void performClickInWindowIfMac(final int startX, final int startY, Robot r) {
-        if (isMac()) {
-            r.mouseMove(startX, startY);
-            sleep(5);
-            r.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-            sleep(5);
-            r.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-        }
-    }
-
-    private void sleep(int ms) {
-        if (ms > 0) {
-            try {
-                Thread.sleep(ms);
-            } catch (InterruptedException e1) {
-            }
-        }
-    }
-
     public ArrayList<Line> makeList() {
 
         ArrayList<Line> lines = new ArrayList<>();
-        for (int y = 0; y < image.getHeight(null); y++) {
 
+        for (int y = 0; y < image.getHeight(null); y++) {
             for (int x = 0; x < image.getWidth(null); x++) {
                 Color c = new Color(image.getRGB(x, y), true);
                 if (!isWhite(c)) {
@@ -272,16 +297,6 @@ public class DrawStuff {
         }
 
         return lines;
-    }
-
-    class Line {
-        Point start;
-        Point end;
-
-        public Line(Point start, Point end) {
-            this.start = start;
-            this.end = end;
-        }
     }
 
     int findLineUntilIsWhite(int y, int curX) {
@@ -340,10 +355,6 @@ public class DrawStuff {
         }
 
         System.out.println("BOX DONE");
-    }
-
-    public static boolean isMac() {
-        return System.getProperty("os.name").toLowerCase().startsWith("mac os x");
     }
 
 }
