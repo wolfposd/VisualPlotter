@@ -141,7 +141,12 @@ public class DrawStuff {
     }
 
     private String getDuration(int size) {
-        long duration = 3 * (size * (5 + 3 * Integer.parseInt(sleepfield.getText()))) / 1000;
+        int sleepField = Integer.parseInt(sleepfield.getText());
+        if (sleepField <= 0) {
+            sleepField = 1;
+        }
+
+        long duration = (6 * size * (5 + 3 * sleepField)) / 1000;
         return formatDurationSeconds(duration);
     }
 
@@ -157,8 +162,6 @@ public class DrawStuff {
     private void startDrawButton() throws InterruptedException, AWTException {
         JOptionPane.showMessageDialog(frame, "Press Enter-Key To Start!");
 
-        System.out.println("Starting with box?");
-
         Point start = MouseInfo.getPointerInfo().getLocation();
 
         final int sleepTime = Integer.parseInt(sleepfield.getText());
@@ -168,6 +171,7 @@ public class DrawStuff {
 
         Robot r = new Robot();
 
+        System.out.println("Starting with Box!");
         performClickInWindowIfMac(startX, startY, r);
         drawMyBox(startX, startY, r);
 
@@ -232,9 +236,11 @@ public class DrawStuff {
     }
 
     private void sleep(int ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e1) {
+        if (ms > 0) {
+            try {
+                Thread.sleep(ms);
+            } catch (InterruptedException e1) {
+            }
         }
     }
 
