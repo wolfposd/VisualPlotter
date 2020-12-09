@@ -44,6 +44,9 @@ public class DrawStuff {
     private JCheckBox drawBox;
     private JProgressBar progress;
     private JTextField sleepfield;
+    
+    private JCheckBox blackOnly;
+    private JCheckBox ignoreGray;
 
     private List<List<Line>> allLines;
     private int allLinesToDraw = 0;
@@ -86,6 +89,9 @@ public class DrawStuff {
 
         drawBox = new JCheckBox("Draw Box?", true);
 
+        blackOnly = new JCheckBox("Black Only?", true);
+        ignoreGray = new JCheckBox("Ignore Gray?", true);
+
         JPanel panel = new JPanel(new BorderLayout());
         BoxLayout box = new BoxLayout(panel, BoxLayout.X_AXIS);
         panel.setLayout(box);
@@ -93,6 +99,8 @@ public class DrawStuff {
         panel.add(startDraw);
         panel.add(shuffle);
         panel.add(drawBox);
+        panel.add(blackOnly);
+        panel.add(ignoreGray);
         panel.add(sleepfield);
 
         frame.add(progress, BorderLayout.NORTH);
@@ -143,6 +151,8 @@ public class DrawStuff {
                         allLinesToDraw += s.size();
                     });
                     allLinesToDraw -= allLines.get(1).size();
+                    
+                    PrepareImage.printLines(allLines, currentConference.getColors());
 
                     progress.setString(String.format("%d (%s)", allLinesToDraw, getDuration()));
                 } catch (IOException e) {
@@ -224,6 +234,14 @@ public class DrawStuff {
                 List<Line> curLines = allLines.get(i);
                 
                 if (Objects.equals(colors[i], Color.WHITE) || curLines.size() == 0) {
+                    continue;
+                }
+                
+                if(blackOnly.isSelected() && i != currentConference.getBlack()) {
+                    continue;
+                }
+                
+                if (ignoreGray.isSelected() && i == currentConference.getGray()) {
                     continue;
                 }
                 

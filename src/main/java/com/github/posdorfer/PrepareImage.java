@@ -27,12 +27,16 @@ public class PrepareImage {
         Color[] colors = room.getColors();
         List<List<Line>> makeLines = makeLines(colCon.image, colors);
 
+        printLines(makeLines, room.getColors());
+
+    }
+    
+    public static void printLines(List<List<Line>> makeLines, Color[] colors) {
         for (int i = 0; i < makeLines.size(); i++) {
             List<Line> line = makeLines.get(i);
 
             System.out.println(Integer.toHexString(colors[i].getRGB()) + " " + line.size());
         }
-
     }
 
     static void printColors(BufferedImage image) {

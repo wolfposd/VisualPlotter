@@ -67,5 +67,15 @@ public class BigBlueButton implements ConferenceRoom {
         int xpos = colorSelectButton.x - (colors.length - col) * width;
         return new Point(xpos, colorSelectButton.y);
     }
+    
+    @Override
+    public int getGray() {
+        return 11;
+    }
+    
+    @Override
+    public int getBlack() {
+        return 0;
+    }
 
 }
