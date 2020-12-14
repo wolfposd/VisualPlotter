@@ -229,7 +229,7 @@ public class DrawStuff {
             Color[] colors = currentConference.getColors();
 
             int progress = 0;
-            for (int i = 0; i < allLines.size(); i++) {
+            for (int i = allLines.size()-1; i >=0 ; i--) {
 
                 List<Line> curLines = allLines.get(i);
                 
